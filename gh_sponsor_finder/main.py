@@ -131,8 +131,8 @@ def get_org_sponsored_user_count(client, name):
 Gets all GitHub sponsors of `degree` starting from organization with login
 `name`.
 
-For example, all sponsors of degree 2 in Sentry's network are all sponsors who
-sponsor users sponsored by organizations which sponsor users which Sentry
+For example, all sponsors of degree 2 in Sentry's network are all organizations
+who sponsor users sponsored by organizations which sponsor users which Sentry
 sponsors.
 """
 def get_sponsor_network(client, start_org, degree):
@@ -143,15 +143,25 @@ def get_sponsor_network(client, start_org, degree):
     for idx_iteration in range(0, degree):
         sponsored_users = set()
 
-        for new_sponsor in sponsors.difference(seen_sponsors):
-            new_sponsored_users = get_org_sponsored_users(client, new_sponsor)
-            sponsored_users = sponsored_users.union(new_sponsored_users)
+        new_sponsors = sponsors.difference(seen_sponsors)
+        for idx, new_sponsor in enumerate(new_sponsors):
+            eprint(f"{idx + 1}/{len(new_sponsors)}")
+            try:
+                new_sponsored_users = get_org_sponsored_users(client, new_sponsor)
+                sponsored_users = sponsored_users.union(new_sponsored_users)
+            except Exception as e:
+                eprint(f"Couldn't get sponsored users for org {new_sponsor}. Ignoring.", e)
 
         seen_sponsors = seen_sponsors.union(sponsors)
 
-        for new_user in sponsored_users.difference(seen_users):
-            user_sponsors = get_user_sponsors(client, new_user)
-            sponsors = sponsors.union(user_sponsors)
+        new_users = sponsored_users.difference(seen_users)
+        for idx, new_user in enumerate(new_users):
+            eprint(f"{idx + 1}/{len(new_users)}")
+            try:
+                user_sponsors = get_user_sponsors(client, new_user)
+                sponsors = sponsors.union(user_sponsors)
+            except Exception as e:
+                eprint(f"Couldn't get sponsors for user {new_user}. Ignoring.", e)
 
         seen_users = seen_users.union(sponsored_users)
 
@@ -168,8 +178,9 @@ def main():
 
     client = get_gql_client()
 
-    sponsors = get_sponsor_network(client, args.start_org, 1)
-    for sponsor in sponsors:
+    sponsors = get_sponsor_network(client, args.start_org, degree=2)
+    for idx, sponsor in enumerate(sponsors):
+        eprint(f"{idx + 1}/{len(sponsors)}")
         count = get_org_sponsored_user_count(client, sponsor)
         print(f'* [{sponsor}](https://github.com/{sponsor}), sponsoring {count}')
 
