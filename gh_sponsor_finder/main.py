@@ -26,7 +26,45 @@ query getUserSponsors($login: String!, $after: String) {
 }
 """)
 
+ORG_SPONSORING_QUERY = gql("""
+query getOrgSponsoring($login: String!, $after: String) {
+    organization(login: $login) {
+        sponsoring(first: 100, after: $after) {
+            nodes {
+                ... on User {
+                    login
+                }
+            }
+            pageInfo {
+                endCursor
+                hasNextPage
+            }
+        }
+    }
+}
+""")
 
+ORG_SPONSORING_COUNT_QUERY = gql("""
+query getOrgSponsoringCount($login: String!) {
+    organization(login: $login) {
+        sponsoring(first: 1) {
+            totalCount
+        }
+    }
+}
+""")
+
+
+"""
+Prints to stderr.
+"""
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+
+"""
+Gets a `gql.Client`.
+"""
 def get_gql_client():
     token = os.environ.get('GH_TOKEN', '')
     transport = AIOHTTPTransport(url="https://api.github.com/graphql",
@@ -34,35 +72,106 @@ def get_gql_client():
     return Client(transport=transport, fetch_schema_from_transport=True)
 
 
+"""
+Gets all organizations which sponsor user with login `name`.
+"""
 def get_user_sponsors(client, name):
-    sponsors = []
+    eprint(f"get_user_sponsors(_, {name})")
+    sponsors = set()
 
     after = None
     while True:
-        pageResults = client.execute(USER_SPONSOR_QUERY,
+        page_results = client.execute(USER_SPONSOR_QUERY,
             variable_values={'login': name, 'after': after})
-        for sponsor in pageResults['user']['sponsors']['nodes']:
+        for sponsor in page_results['user']['sponsors']['nodes']:
             if sponsor:
-                sponsors.append(sponsor)
-        after = pageResults['user']['sponsors']['pageInfo']['endCursor']
-        if not pageResults['user']['sponsors']['pageInfo']['hasNextPage']:
+                sponsors.add(sponsor['login'])
+        after = page_results['user']['sponsors']['pageInfo']['endCursor']
+        if not page_results['user']['sponsors']['pageInfo']['hasNextPage']:
             break
 
     return sponsors
 
 
+"""
+Gets all users sponsored by an organization with login `name`.
+"""
+def get_org_sponsored_users(client, name):
+    eprint(f"get_org_sponsored_users(_, {name})")
+    sponsored_users = set()
+
+    after = None
+    while True:
+        page_results = client.execute(ORG_SPONSORING_QUERY,
+            variable_values={'login': name, 'after': after})
+        for sponsored_user in page_results['organization']['sponsoring']['nodes']:
+            if sponsored_user:
+                sponsored_users.add(sponsored_user['login'])
+        after = page_results['organization']['sponsoring']['pageInfo']['endCursor']
+        if not page_results['organization']['sponsoring']['pageInfo']['hasNextPage']:
+            break
+
+    return sponsored_users
+
+
+"""
+Gets the number of users sponsored by the organization with login `name`.
+"""
+def get_org_sponsored_user_count(client, name):
+    eprint(f"get_org_sponsored_user_count(_, {name})")
+    sponsored_users = set()
+
+    page_results = client.execute(ORG_SPONSORING_COUNT_QUERY,
+        variable_values={'login': name})
+
+    return page_results['organization']['sponsoring']['totalCount']
+
+
+"""
+Gets all GitHub sponsors of `degree` starting from organization with login
+`name`.
+
+For example, all sponsors of degree 2 in Sentry's network are all sponsors who
+sponsor users sponsored by organizations which sponsor users which Sentry
+sponsors.
+"""
+def get_sponsor_network(client, start_org, degree):
+    seen_users = set()
+    seen_sponsors = set()
+    sponsors = set([start_org])
+
+    for idx_iteration in range(0, degree):
+        sponsored_users = set()
+
+        for new_sponsor in sponsors.difference(seen_sponsors):
+            new_sponsored_users = get_org_sponsored_users(client, new_sponsor)
+            sponsored_users = sponsored_users.union(new_sponsored_users)
+
+        seen_sponsors = seen_sponsors.union(sponsors)
+
+        for new_user in sponsored_users.difference(seen_users):
+            user_sponsors = get_user_sponsors(client, new_user)
+            sponsors = sponsors.union(user_sponsors)
+
+        seen_users = seen_users.union(sponsored_users)
+
+    return sponsors
+
+
 def main():
-    parser = argparse.ArgumentParser("sponsor_finder")
-    parser.add_argument("--username",
-        help="The user to get sponsors for",
+    parser = argparse.ArgumentParser("gh_sponsor_finder")
+    parser.add_argument("--start-org",
+        help="The organization to start the search from",
         type=str,
         required=True)
     args = parser.parse_args()
 
     client = get_gql_client()
-    sponsors = get_user_sponsors(client, args.username)
+
+    sponsors = get_sponsor_network(client, args.start_org, 1)
     for sponsor in sponsors:
-        print(f"https://github.com/{sponsor['login']}")
+        count = get_org_sponsored_user_count(client, sponsor)
+        print(f'* [{sponsor}](https://github.com/{sponsor}), sponsoring {count}')
 
 
 if __name__ == '__main__':

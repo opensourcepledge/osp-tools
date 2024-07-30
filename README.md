@@ -1,4 +1,4 @@
 # Open Source Pledge Tools
 
-* [gh_sponsor_finder](gh_sponsor_finder/): Gets information on which
-  organisations are sponsoring a certain GitHub user.
+* [gh_sponsor_finder](gh_sponsor_finder/): Gets information on the network of
+  GitHub sponsors starting with an organization.

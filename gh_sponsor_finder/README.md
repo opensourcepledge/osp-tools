@@ -1,9 +1,17 @@
 # gh_sponsor_finder
 
-Gets information on which organisations are sponsoring a certain GitHub user.
+Gets all GitHub sponsors of a certain degree starting from an organization.
+
+For example, all sponsors of degree 2 in Sentry's network are all sponsors who
+sponsor users sponsored by organizations which sponsor users which Sentry
+sponsors.
+
+This works by starting at an organization, getting the users it sponsors,
+getting all organizations that sponsor those users, getting all users those
+organizations sponsor, and so on.
 
 ## Usage
 
 ```
-GH_TOKEN="github_..." ./main.py
+GH_TOKEN="github_..." ./main.py --start-org getsentry
 ```
