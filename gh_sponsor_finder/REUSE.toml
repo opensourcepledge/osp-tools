@@ -1,0 +1,10 @@
+version = 1
+
+[[annotations]]
+path = [
+    "REUSE.toml",
+    "output/*",
+    "requirements.txt",
+]
+SPDX-FileCopyrightText = "NONE"
+SPDX-License-Identifier = "CC0-1.0"
