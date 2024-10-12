@@ -1,0 +1,51 @@
+<!--
+© 2024 Vlad-Stefan Harbuz <vlad@vladh.net>
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width">
+        <title>OSP Report Visualizer</title>
+<style>
+* {
+    box-sizing: border-box;
+}
+:root {
+    --color-bg: #080e17;
+    --color-light-bg: #16212d;
+    --color-primary: #2dde74;
+    --color-secondary: #9e86ff;
+    --color-tertiary: #ffd00e;
+    --color-muted: #37485c;
+    --color-pink: #ff70bc;
+    --color-text: white;
+}
+html, body {
+    margin: 0;
+    padding: 0;
+}
+html {
+    font-size: 16px;
+}
+.axis {
+    font-size: 14px;
+}
+.bar {
+    fill: var(--color-secondary);
+}
+.marker {
+    stroke-width: 2px;
+    stroke: var(--color-tertiary);
+    fill: none;
+    outline: 2px solid white;
+}
+</style>
+    </head>
+    <body>
+        <main></main>
+        <script src="build/index.js"></script>
+    </body>
+</html>

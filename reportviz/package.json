@@ -1,0 +1,19 @@
+{
+  "name": "reportviz",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node esbuild.mjs"
+  },
+  "author": "Vlad-Stefan Harbuz <vlad@vladh.net>",
+  "license": "Apache-2.0",
+  "description": "",
+  "private": true,
+  "dependencies": {
+    "d3": "^7.9.0",
+    "dayjs": "^1.11.13"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "esbuild-plugin-import-glob": "^0.1.1"
+  }
+}
