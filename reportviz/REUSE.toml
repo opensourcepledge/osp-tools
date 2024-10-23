@@ -25,5 +25,5 @@ SPDX-License-Identifier = "CC0-1.0"
 path = [
     "build/**/*",
 ]
-SPDX-FileCopyrightText = "© 2024 Vlad-Stefan Harbuz <vlad@vladh.net>"
+SPDX-FileCopyrightText = "© 2024 Vlad-Stefan Harbuz <vlad@vlad.website>"
 SPDX-License-Identifier = "Apache-2.0"

@@ -4,7 +4,7 @@
   "scripts": {
     "build": "node esbuild.mjs"
   },
-  "author": "Vlad-Stefan Harbuz <vlad@vladh.net>",
+  "author": "Vlad-Stefan Harbuz <vlad@vlad.website>",
   "license": "Apache-2.0",
   "description": "",
   "private": true,
