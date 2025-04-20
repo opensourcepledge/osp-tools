@@ -4,7 +4,7 @@
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
-# gh_sponsor_finder
+# gh-sponsor-finder
 
 Gets all GitHub sponsor organizations of a certain degree starting from an
 organization.

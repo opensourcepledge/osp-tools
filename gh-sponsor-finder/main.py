@@ -173,7 +173,7 @@ def get_sponsor_network(client, start_org, degree):
 
 
 def main():
-    parser = argparse.ArgumentParser("gh_sponsor_finder")
+    parser = argparse.ArgumentParser("gh-sponsor-finder")
     parser.add_argument("--start-org",
         help="The organization to start the search from",
         type=str,
