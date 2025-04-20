@@ -6,7 +6,9 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/davecgh/go-spew/spew"
+	"fmt"
+	// "github.com/davecgh/go-spew/spew"
+	"log"
 	"net/http"
 	"time"
 )
@@ -74,7 +76,12 @@ type EcosystemsPackage struct {
 
 var httpClient = &http.Client{}
 
+func getUrlForCriticalPackages(page int) string {
+	return fmt.Sprintf("https://packages.ecosyste.ms/api/v1/packages/critical?page=%d&per_page=1000", page)
+}
+
 func getJson(url string, target interface{}) error {
+	log.Printf("GET %s\n", url)
 	r, err := httpClient.Get(url)
 	if err != nil {
 		return err
@@ -83,8 +90,65 @@ func getJson(url string, target interface{}) error {
 	return json.NewDecoder(r.Body).Decode(target)
 }
 
+func getCriticalPackages() []EcosystemsPackage {
+	packages := []EcosystemsPackage{}
+	page := 1
+	for {
+		packagesPage := []EcosystemsPackage{}
+		err := getJson(getUrlForCriticalPackages(page), &packagesPage)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		page += 1
+		log.Printf("+%d\n", len(packagesPage))
+		if len(packagesPage) == 0 {
+			break
+		}
+		packages = append(packages, packagesPage...)
+	}
+	return packages
+}
+
+type EcosystemsMaintainerRef struct {
+	Ecosystem string
+	Login     string
+}
+
+type EcosystemsMaintainerStats struct {
+	NCriticalPackages int
+}
+
+func getMaintainerMapFromPackages(packages []EcosystemsPackage) map[EcosystemsMaintainerRef]EcosystemsMaintainerStats {
+	m := make(map[EcosystemsMaintainerRef]EcosystemsMaintainerStats)
+	for _, pkg := range packages {
+		for _, maintainer := range pkg.Maintainers {
+			if maintainer.Login == nil {
+				continue
+			}
+			ref := EcosystemsMaintainerRef{
+				Ecosystem: pkg.Ecosystem,
+				Login:     *maintainer.Login,
+			}
+			if entry, ok := m[ref]; ok {
+				m[ref] = EcosystemsMaintainerStats{
+					NCriticalPackages: entry.NCriticalPackages + 1,
+				}
+			} else {
+				m[ref] = EcosystemsMaintainerStats{
+					NCriticalPackages: 1,
+				}
+			}
+		}
+	}
+	return m
+}
+
 func main() {
-	packages := new([]EcosystemsPackage)
-	getJson("https://packages.ecosyste.ms/api/v1/packages/critical?page=1&per_page=1000", packages)
-	spew.Dump(packages)
+	log.SetFlags(0)
+	packages := getCriticalPackages()
+	maintainerMap := getMaintainerMapFromPackages(packages)
+	log.Println(len(packages))
+	for k := range maintainerMap {
+		log.Printf("%03d\t%s/%s\n", maintainerMap[k].NCriticalPackages, k.Ecosystem, k.Login)
+	}
 }
