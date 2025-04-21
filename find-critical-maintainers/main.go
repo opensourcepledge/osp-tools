@@ -76,6 +76,13 @@ type EcosystemsPackage struct {
 
 var httpClient = &http.Client{}
 
+func tryDeref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 func getUrlForCriticalPackages(page int) string {
 	return fmt.Sprintf("https://packages.ecosyste.ms/api/v1/packages/critical?page=%d&per_page=1000", page)
 }
@@ -110,37 +117,68 @@ func getCriticalPackages() []EcosystemsPackage {
 }
 
 type EcosystemsMaintainerRef struct {
-	Ecosystem string
-	Login     string
+	Login string
+	Name  string
+	Email string
 }
 
 type EcosystemsMaintainerStats struct {
 	NCriticalPackages int
 }
 
+func findSimilarMaintainerRef(maintainerMap map[EcosystemsMaintainerRef]EcosystemsMaintainerStats, ref EcosystemsMaintainerRef) (EcosystemsMaintainerRef, bool) {
+	for k := range maintainerMap {
+		isSimilar := (len(k.Login) > 0 && k.Login == ref.Login) ||
+			(len(k.Name) > 0 && k.Name == ref.Name) ||
+			(len(k.Email) > 0 && k.Email == ref.Email)
+		if isSimilar {
+			return k, true
+		}
+	}
+	return EcosystemsMaintainerRef{}, false
+}
+
+func mergeMaintainerRefs(a EcosystemsMaintainerRef, b EcosystemsMaintainerRef) EcosystemsMaintainerRef {
+	if len(a.Login) == 0 {
+		a.Login = b.Login
+	}
+	if len(a.Name) == 0 {
+		a.Name = b.Name
+	}
+	if len(a.Email) == 0 {
+		a.Email = b.Email
+	}
+	return a
+}
+
 func getMaintainerMapFromPackages(packages []EcosystemsPackage) map[EcosystemsMaintainerRef]EcosystemsMaintainerStats {
-	m := make(map[EcosystemsMaintainerRef]EcosystemsMaintainerStats)
+	maintainerMap := make(map[EcosystemsMaintainerRef]EcosystemsMaintainerStats)
 	for _, pkg := range packages {
 		for _, maintainer := range pkg.Maintainers {
-			if maintainer.Login == nil {
-				continue
-			}
 			ref := EcosystemsMaintainerRef{
-				Ecosystem: pkg.Ecosystem,
-				Login:     *maintainer.Login,
+				Login: tryDeref(maintainer.Login),
+				Name:  tryDeref(maintainer.Name),
+				Email: tryDeref(maintainer.Email),
 			}
-			if entry, ok := m[ref]; ok {
-				m[ref] = EcosystemsMaintainerStats{
-					NCriticalPackages: entry.NCriticalPackages + 1,
+			if similarRef, gotSimilar := findSimilarMaintainerRef(maintainerMap, ref); gotSimilar {
+				val := EcosystemsMaintainerStats{
+					NCriticalPackages: maintainerMap[similarRef].NCriticalPackages + 1,
+				}
+				delete(maintainerMap, similarRef)
+				mergedRef := mergeMaintainerRefs(ref, similarRef)
+				maintainerMap[mergedRef] = val
+			} else if currStats, ok := maintainerMap[ref]; ok {
+				maintainerMap[ref] = EcosystemsMaintainerStats{
+					NCriticalPackages: currStats.NCriticalPackages + 1,
 				}
 			} else {
-				m[ref] = EcosystemsMaintainerStats{
+				maintainerMap[ref] = EcosystemsMaintainerStats{
 					NCriticalPackages: 1,
 				}
 			}
 		}
 	}
-	return m
+	return maintainerMap
 }
 
 func main() {
@@ -149,6 +187,8 @@ func main() {
 	maintainerMap := getMaintainerMapFromPackages(packages)
 	log.Println(len(packages))
 	for k := range maintainerMap {
-		log.Printf("%03d\t%s/%s\n", maintainerMap[k].NCriticalPackages, k.Ecosystem, k.Login)
+		log.Printf("%03d\t%s; %s; %s\n",
+			maintainerMap[k].NCriticalPackages,
+			k.Login, k.Name, k.Email)
 	}
 }
