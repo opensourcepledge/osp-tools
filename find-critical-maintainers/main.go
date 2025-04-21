@@ -74,6 +74,16 @@ type EcosystemsPackage struct {
 	Critical                 bool                   `json:"critical"`
 }
 
+type EcosystemsMaintainerRef struct {
+	Login string
+	Name  string
+	Email string
+}
+
+type EcosystemsMaintainerStats struct {
+	NCriticalPackages int
+}
+
 var httpClient = &http.Client{}
 
 func tryDeref(s *string) string {
@@ -114,16 +124,6 @@ func getCriticalPackages() []EcosystemsPackage {
 		packages = append(packages, packagesPage...)
 	}
 	return packages
-}
-
-type EcosystemsMaintainerRef struct {
-	Login string
-	Name  string
-	Email string
-}
-
-type EcosystemsMaintainerStats struct {
-	NCriticalPackages int
 }
 
 func findSimilarMaintainerRef(maintainerMap map[EcosystemsMaintainerRef]EcosystemsMaintainerStats, ref EcosystemsMaintainerRef) (EcosystemsMaintainerRef, bool) {
