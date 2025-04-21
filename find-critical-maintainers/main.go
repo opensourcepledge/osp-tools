@@ -84,6 +84,9 @@ type EcosystemsMaintainerStats struct {
 	NCriticalPackages int
 }
 
+const PACKAGES_PER_PAGE int = 10
+const GET_ONLY_ONE_PAGE bool = true
+
 var httpClient = &http.Client{}
 
 func tryDeref(s *string) string {
@@ -94,7 +97,8 @@ func tryDeref(s *string) string {
 }
 
 func getUrlForCriticalPackages(page int) string {
-	return fmt.Sprintf("https://packages.ecosyste.ms/api/v1/packages/critical?page=%d&per_page=1000", page)
+	return fmt.Sprintf("https://packages.ecosyste.ms/api/v1/packages/critical?page=%d&per_page=%d",
+		page, PACKAGES_PER_PAGE)
 }
 
 func getJson(url string, target interface{}) error {
@@ -122,6 +126,9 @@ func getCriticalPackages() []EcosystemsPackage {
 			break
 		}
 		packages = append(packages, packagesPage...)
+		if GET_ONLY_ONE_PAGE {
+			break
+		}
 	}
 	return packages
 }
