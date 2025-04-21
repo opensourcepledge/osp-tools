@@ -7,7 +7,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	// "github.com/davecgh/go-spew/spew"
+	"github.com/davecgh/go-spew/spew"
 	"log"
 	"net/http"
 	"time"
@@ -28,7 +28,54 @@ type EcosystemsMaintainer struct {
 	Role           *string   `json:"role"`
 }
 
+type EcosystemsCommitter struct {
+	Name  *string `json:"name"`
+	Email *string `json:"email"`
+	Login *string `json:"login"`
+	Count int     `json:"count"`
+}
+
+type EcosystemsHost struct {
+	Name              string     `json:"name"`
+	Url               string     `json:"name"`
+	Kind              string     `json:"kind"`
+	LastSyncedAt      *time.Time `json:"last_synced_at"`
+	RepositoriesCount int        `json:"repositories_count"`
+	CommitsCount      int        `json:"commits_count"`
+	ContributorsCount int        `json:"contributors_count"`
+	OwnersCount       int        `json:"owners_count"`
+	IconUrl           *string    `json:"icon_url"`
+	HostUrl           string     `json:"host_url"`
+	RepositoriesUrl   string     `json:"repositories_url"`
+}
+
+type EcosystemsCommits struct {
+	FullName                   string                `json:"full_name"`
+	DefaultBranch              string                `json:"default_branch"`
+	Committers                 []EcosystemsCommitter `json:"committers"`
+	TotalCommits               int                   `json:"total_commits"`
+	TotalCommitters            int                   `json:"total_committers"`
+	TotalBotCommits            int                   `json:"total_bot_commits"`
+	TotalBotCommitters         int                   `json:"total_bot_committers"`
+	MeanCommits                float32               `json:"mean_commits"`
+	Dds                        float32               `json:"dds"`
+	PastYearCommitters         []EcosystemsCommitter `json:"past_year_committers"`
+	PastYearTotalCommits       int                   `json:"past_year_total_commits"`
+	PastYearTotalCommitters    int                   `json:"past_year_total_committers"`
+	PastYearTotalBotCommits    int                   `json:"past_year_total_bot_commits"`
+	PastYearTotalBotCommitters int                   `json:"past_year_total_bot_committers"`
+	PastYearMeanCommits        float32               `json:"past_year_mean_commits"`
+	PastYearDds                float32               `json:"past_year_dds"`
+	LastSyncedAt               *time.Time            `json:"last_synced_at"`
+	LastSyncedCommit           *string               `json:"last_synced_commit"`
+	CreatedAt                  time.Time             `json:"created_at"`
+	UpdatedAt                  time.Time             `json:"updated_at"`
+	CommitsUrl                 string                `json:"commits_url"`
+	Host                       EcosystemsHost        `json:"host"`
+}
+
 type EcosystemsPackage struct {
+	// Fields from https://packages.ecosyste.ms/docs/index.html
 	Id                       int        `json:"id"`
 	Name                     string     `json:"name"`
 	Ecosystem                string     `json:"ecosystem"`
@@ -72,6 +119,14 @@ type EcosystemsPackage struct {
 	FundingLinks             []string               `json:"funding_links"`
 	Maintainers              []EcosystemsMaintainer `json:"maintainers"`
 	Critical                 bool                   `json:"critical"`
+
+	// Fields (some undocumented) from https://summary.ecosyste.ms/docs/index.html
+	Commits EcosystemsCommits `json:"commits"`
+}
+
+type EcosystemsSummary struct {
+	// A bunch of fields we don't care about right now, and then...
+	Commits EcosystemsCommits `json:"commits"`
 }
 
 type EcosystemsMaintainerRef struct {
@@ -99,6 +154,10 @@ func tryDeref(s *string) string {
 func getUrlForCriticalPackages(page int) string {
 	return fmt.Sprintf("https://packages.ecosyste.ms/api/v1/packages/critical?page=%d&per_page=%d",
 		page, PACKAGES_PER_PAGE)
+}
+
+func getUrlForPackageSummary(url string) string {
+	return fmt.Sprintf("https://summary.ecosyste.ms/api/v1/projects/lookup?url=%s", url)
 }
 
 func getJson(url string, target interface{}) error {
@@ -131,6 +190,15 @@ func getCriticalPackages() []EcosystemsPackage {
 		}
 	}
 	return packages
+}
+
+func getPackageSummary(url string) EcosystemsSummary {
+	summary := EcosystemsSummary{}
+	err := getJson(getUrlForPackageSummary(url), &summary)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return summary
 }
 
 func findSimilarMaintainerRef(maintainerMap map[EcosystemsMaintainerRef]EcosystemsMaintainerStats, ref EcosystemsMaintainerRef) (EcosystemsMaintainerRef, bool) {
@@ -191,6 +259,13 @@ func getMaintainerMapFromPackages(packages []EcosystemsPackage) map[EcosystemsMa
 func main() {
 	log.SetFlags(0)
 	packages := getCriticalPackages()
+	for _, pkg := range packages {
+		if pkg.RepositoryUrl == nil || len(*pkg.RepositoryUrl) == 0 {
+			continue
+		}
+		summary := getPackageSummary(*pkg.RepositoryUrl)
+		spew.Dump(summary)
+	}
 	maintainerMap := getMaintainerMapFromPackages(packages)
 	log.Println(len(packages))
 	for k := range maintainerMap {
