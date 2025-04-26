@@ -26,10 +26,11 @@ This method has multiple limitations:
 * It overrepresents small ecosystems, such as NuGet.
 * Only some ecosystems are supported. Only ecosystems that publish per-package download statistics can be supported. For
   example, it does not seem possible to get download statistics for Go packages.
-
-There are some improvements still to make:
-
-* Consider commit authors (eg using ecosyste.ms summary service).
+* Data is incomplete. Some critical packages have no committer information and no commit data, so maintainers cannot be
+  identified.
+* Some heuristics are used, which can lead to incorrect data. For example, maintainers are deduplicated by merging
+  maintainer data where two ostensibly different maintainers have the same username, name or email address. This should
+  mostly yield correct results, but has the potential to merge unrelated maintainers with identical names, for example.
 
 Useful ecosyste.ms resources:
 

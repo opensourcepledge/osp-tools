@@ -7,9 +7,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
+	// "github.com/davecgh/go-spew/spew"
 	"log"
 	"net/http"
+	// "os"
 	"time"
 )
 
@@ -29,9 +30,9 @@ type EcosystemsMaintainer struct {
 }
 
 type EcosystemsCommitter struct {
+	Login *string `json:"login"`
 	Name  *string `json:"name"`
 	Email *string `json:"email"`
-	Login *string `json:"login"`
 	Count int     `json:"count"`
 }
 
@@ -119,9 +120,6 @@ type EcosystemsPackage struct {
 	FundingLinks             []string               `json:"funding_links"`
 	Maintainers              []EcosystemsMaintainer `json:"maintainers"`
 	Critical                 bool                   `json:"critical"`
-
-	// Fields (some undocumented) from https://summary.ecosyste.ms/docs/index.html
-	Commits EcosystemsCommits `json:"commits"`
 }
 
 type EcosystemsSummary struct {
@@ -139,8 +137,16 @@ type EcosystemsMaintainerStats struct {
 	NCriticalPackages int
 }
 
+// How many packages `getCriticalPackages()` should fetch at a time.
 const PACKAGES_PER_PAGE int = 10
+
+// Whether `getCriticalPacakges()` should only fetch one page.
 const GET_ONLY_ONE_PAGE bool = true
+
+// The fraction of all repository commits that a committer must have committed
+// to be considered a significant committer, which justifies inclusion in the
+// list of maintainers.
+const SIGNIFICANT_COMMITTER_FRACTION float32 = 0.2
 
 var httpClient = &http.Client{}
 
@@ -201,7 +207,15 @@ func getPackageSummary(url string) EcosystemsSummary {
 	return summary
 }
 
-func findSimilarMaintainerRef(maintainerMap map[EcosystemsMaintainerRef]EcosystemsMaintainerStats, ref EcosystemsMaintainerRef) (EcosystemsMaintainerRef, bool) {
+// Finds whether an EcosystemsMaintainerRef that is similar to `ref` already
+// exists in `maintainerMap`, where two refs are similar if they have the same
+// non-empty login, name or email. This is a heuristic, which may lead to false
+// aggregation of actually unrelated refs. It should be a decent compromise for
+// now.
+func findSimilarMaintainerRef(
+	maintainerMap map[EcosystemsMaintainerRef]EcosystemsMaintainerStats,
+	ref EcosystemsMaintainerRef,
+) (EcosystemsMaintainerRef, bool) {
 	for k := range maintainerMap {
 		isSimilar := (len(k.Login) > 0 && k.Login == ref.Login) ||
 			(len(k.Name) > 0 && k.Name == ref.Name) ||
@@ -224,6 +238,26 @@ func mergeMaintainerRefs(a EcosystemsMaintainerRef, b EcosystemsMaintainerRef) E
 		a.Email = b.Email
 	}
 	return a
+}
+
+func getMaintainersFromCommits(commits EcosystemsCommits) []EcosystemsMaintainer {
+	maintainers := []EcosystemsMaintainer{}
+	for _, committer := range commits.Committers {
+		commitFraction := float32(committer.Count) / float32(commits.TotalCommits)
+		// NOTE: This works because committers are descendingly sorted by
+		// commit count in the ecosyste.ms API response. If this stops being
+		// the case, this code will break.
+		if commitFraction < SIGNIFICANT_COMMITTER_FRACTION {
+			break
+		}
+		newMaintainer := EcosystemsMaintainer{
+			Login: committer.Login,
+			Name:  committer.Name,
+			Email: committer.Email,
+		}
+		maintainers = append(maintainers, newMaintainer)
+	}
+	return maintainers
 }
 
 func getMaintainerMapFromPackages(packages []EcosystemsPackage) map[EcosystemsMaintainerRef]EcosystemsMaintainerStats {
@@ -256,17 +290,51 @@ func getMaintainerMapFromPackages(packages []EcosystemsPackage) map[EcosystemsMa
 	return maintainerMap
 }
 
+func mergeMaintainers(a []EcosystemsMaintainer, b []EcosystemsMaintainer) []EcosystemsMaintainer {
+	for _, mb := range b {
+		exists := false
+		for _, ma := range a {
+			isSimilar := (ma.Login != nil && mb.Login != nil && *ma.Login == *mb.Login) ||
+				(ma.Name != nil && mb.Name != nil && *ma.Name == *mb.Name) ||
+				(ma.Email != nil && mb.Email != nil && *ma.Email == *mb.Email)
+			if isSimilar {
+				exists = true
+			}
+		}
+		if !exists {
+			a = append(a, mb)
+		}
+	}
+	return a
+}
+
 func main() {
 	log.SetFlags(0)
 	packages := getCriticalPackages()
-	for _, pkg := range packages {
+	for idx := range packages {
+		pkg := &packages[idx]
 		if pkg.RepositoryUrl == nil || len(*pkg.RepositoryUrl) == 0 {
 			continue
 		}
 		summary := getPackageSummary(*pkg.RepositoryUrl)
-		spew.Dump(summary)
+		maintainersFromCommits := getMaintainersFromCommits(summary.Commits)
+		pkg.Maintainers = mergeMaintainers(pkg.Maintainers, maintainersFromCommits)
+		// log.Println("Number of commits:")
+		// spew.Fdump(os.Stderr, summary.Commits.TotalCommits)
+		// log.Println("Committers:")
+		// for idx, committer := range summary.Commits.Committers {
+		// 	if idx > 4 {
+		// 		break
+		// 	}
+		// 	spew.Fdump(os.Stderr, committer)
+		// }
+		// log.Println("Maintainers from commits:")
+		// spew.Fdump(os.Stderr, maintainersFromCommits)
+		// log.Println("All maintainers:")
+		// spew.Fdump(os.Stderr, pkg.Maintainers)
 	}
 	maintainerMap := getMaintainerMapFromPackages(packages)
+	// spew.Fdump(os.Stderr, maintainerMap)
 	log.Println(len(packages))
 	for k := range maintainerMap {
 		log.Printf("%03d\t%s; %s; %s\n",
