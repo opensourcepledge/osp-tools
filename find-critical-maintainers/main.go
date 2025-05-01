@@ -143,10 +143,8 @@ const PACKAGES_PER_PAGE int = 10
 // Whether `getCriticalPacakges()` should only fetch one page.
 const GET_ONLY_ONE_PAGE bool = true
 
-// The fraction of all repository commits that a committer must have committed
-// to be considered a significant committer, which justifies inclusion in the
-// list of maintainers.
-const SIGNIFICANT_COMMITTER_FRACTION float32 = 0.2
+// See `getMaintainersFromCommits()` for more information.
+const SIGNIFICANT_COMMITTER_FRACTION float32 = 0.3
 
 var httpClient = &http.Client{}
 
@@ -240,22 +238,28 @@ func mergeMaintainerRefs(a EcosystemsMaintainerRef, b EcosystemsMaintainerRef) E
 	return a
 }
 
+// Get all committers for a package, sorted descendingly by commit count. For
+// each committer, mark them a significant commiter, and continue until all
+// significant commiters have together cumulatively committed at least
+// `SIGNIFICANT_COMMITTER_FRACTION` of all of the project's commits.
 func getMaintainersFromCommits(commits EcosystemsCommits) []EcosystemsMaintainer {
 	maintainers := []EcosystemsMaintainer{}
+	nCommitsCounted := 0
+	// NOTE: This works because committers are descendingly sorted by commit
+	// count in the ecosyste.ms API response. If this stops being the case,
+	// this code will break.
 	for _, committer := range commits.Committers {
-		commitFraction := float32(committer.Count) / float32(commits.TotalCommits)
-		// NOTE: This works because committers are descendingly sorted by
-		// commit count in the ecosyste.ms API response. If this stops being
-		// the case, this code will break.
-		if commitFraction < SIGNIFICANT_COMMITTER_FRACTION {
-			break
-		}
+		nCommitsCounted += committer.Count
 		newMaintainer := EcosystemsMaintainer{
 			Login: committer.Login,
 			Name:  committer.Name,
 			Email: committer.Email,
 		}
 		maintainers = append(maintainers, newMaintainer)
+		commitFractionCounted := float32(nCommitsCounted) / float32(commits.TotalCommits)
+		if commitFractionCounted >= SIGNIFICANT_COMMITTER_FRACTION {
+			break
+		}
 	}
 	return maintainers
 }
