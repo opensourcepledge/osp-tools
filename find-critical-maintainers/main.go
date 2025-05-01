@@ -36,6 +36,12 @@ type EcosystemsCommitter struct {
 	Count int     `json:"count"`
 }
 
+type EcosystemsIssueAuthor struct {
+	Login *string `json:"login"`
+	Url   *string `json:"url"`
+	Count int     `json:"count"`
+}
+
 type EcosystemsHost struct {
 	Name              string     `json:"name"`
 	Url               string     `json:"name"`
@@ -73,6 +79,68 @@ type EcosystemsCommits struct {
 	UpdatedAt                  time.Time             `json:"updated_at"`
 	CommitsUrl                 string                `json:"commits_url"`
 	Host                       EcosystemsHost        `json:"host"`
+}
+
+type EcosystemsCountTable struct {
+	Table map[string]int `json:"table"`
+}
+
+type EcosystemsIssueAuthorTable struct {
+	Table EcosystemsIssueAuthor `json:"table"`
+}
+
+type EcosystemsIssues struct {
+	Table struct {
+		FullName                                   string                       `json:"full_name"`
+		HtmlUrl                                    string                       `json:"html_url"`
+		LastSyncedAt                               *time.Time                   `json:"last_synced_at"`
+		Status                                     *string                      `json:"status"`
+		IssuesCount                                *int                         `json:"issues_count"`
+		PullRequestsCount                          *int                         `json:"pull_requests_count"`
+		AvgTimeToCloseIssue                        *float32                     `json:"avg_time_to_close_issue"`
+		AvgTimeToClosePullRequest                  *float32                     `json:"avg_time_to_close_pull_request"`
+		IssuesClosedCount                          *int                         `json:"issues_closed_count"`
+		PullRequestsClosedCount                    *int                         `json:"pull_requests_closed_count"`
+		PullRequestAuthorsCount                    *int                         `json:"pull_request_authors_count"`
+		IssueAuthorsCount                          *int                         `json:"issue_authors_count"`
+		AvgCommentsPerIssue                        *float32                     `json:"avg_comments_per_issue"`
+		AvgCommentsPerPullRequest                  *float32                     `json:"avg_comments_per_pull_request"`
+		MergedPullRequestsCount                    *int                         `json:"merged_pull_requests_count"`
+		BotIssuesCount                             *int                         `json:"bot_issues_count"`
+		BotPullRequestsCount                       *int                         `json:"bot_pull_requests_count"`
+		PastYearIssuesCount                        *int                         `json:"past_year_issues_count"`
+		PastYearPullRequestsCount                  *int                         `json:"past_year_pull_requests_count"`
+		PastYearAvgTimeToCloseIssue                *float32                     `json:"past_year_avg_time_to_close_issue"`
+		PastYearAvgTimeToClosePullRequest          *float32                     `json:"past_year_avg_time_to_close_pull_request"`
+		PastYearIssuesClosedCount                  *int                         `json:"past_year_issues_closed_count"`
+		PastYearPullRequestsClosedCount            *int                         `json:"past_year_pull_requests_closed_count"`
+		PastYearPullRequestAuthorsCount            *int                         `json:"past_year_pull_request_authors_count"`
+		PastYearIssueAuthorsCount                  *int                         `json:"past_year_issue_authors_count"`
+		PastYearAvgCommentsPerIssue                *float32                     `json:"past_year_avg_comments_per_issue"`
+		PastYearAvgCommentsPerPullRequest          *float32                     `json:"past_year_avg_comments_per_pull_request"`
+		PastYearBotIssuesCount                     *int                         `json:"past_year_bot_issues_count"`
+		PastYearBotPullRequestsCount               *int                         `json:"past_year_bot_pull_requests_count"`
+		PastYearMergedPullRequestsCount            *int                         `json:"past_year_merged_pull_requests_count"`
+		CreatedAt                                  time.Time                    `json:"created_at"`
+		UpdatedAt                                  time.Time                    `json:"updated_at"`
+		RepositoryUrl                              *string                      `json:"repository_url"`
+		IssuesUrl                                  *string                      `json:"issues_url"`
+		IssueLabelsCount                           EcosystemsCountTable         `json:"issue_labels_count"`
+		PullRequestLabelsCount                     EcosystemsCountTable         `json:"pull_request_labels_count"`
+		IssueAuthorAssociationsCount               EcosystemsCountTable         `json:"issue_author_associations_count"`
+		PullRequestAuthorAssociationsCount         EcosystemsCountTable         `json:"pull_request_author_associations_count"`
+		IssueAuthors                               EcosystemsCountTable         `json:"issue_authors"`
+		PullRequestAuthors                         EcosystemsCountTable         `json:"pull_request_authors"`
+		Host                                       EcosystemsHost               `json:"host"`
+		PastYearIssueLabelsCount                   EcosystemsCountTable         `json:"past_year_issue_labels_count"`
+		PastYearPullRequestLabelsCount             EcosystemsCountTable         `json:"past_year_pull_request_labels_count"`
+		PastYearIssueAuthorAssociationsCount       EcosystemsCountTable         `json:"past_year_issue_author_associations_count"`
+		PastYearPullRequestAuthorAssociationsCount EcosystemsCountTable         `json:"past_year_pull_request_author_associations_count"`
+		PastYearIssueAuthors                       EcosystemsCountTable         `json:"past_year_issue_authors"`
+		PastYearPullRequestAuthors                 EcosystemsCountTable         `json:"past_year_pull_request_authors"`
+		Maintainers                                []EcosystemsIssueAuthorTable `json:"maintainers"`
+		ActiveMaintainers                          []EcosystemsIssueAuthorTable `json:"active_maintainers"`
+	} `json:"table"`
 }
 
 type EcosystemsPackage struct {
@@ -125,6 +193,7 @@ type EcosystemsPackage struct {
 type EcosystemsSummary struct {
 	// A bunch of fields we don't care about right now, and then...
 	Commits EcosystemsCommits `json:"commits"`
+	Issues  EcosystemsIssues  `json:"issues"`
 }
 
 type EcosystemsMaintainerRef struct {
@@ -238,6 +307,32 @@ func mergeMaintainerRefs(a EcosystemsMaintainerRef, b EcosystemsMaintainerRef) E
 	return a
 }
 
+func mergeMaintainers(a EcosystemsMaintainer, b EcosystemsMaintainer) EcosystemsMaintainer {
+	if a.Login == nil {
+		a.Login = b.Login
+	}
+	if a.Name == nil {
+		a.Name = b.Name
+	}
+	if a.Email == nil {
+		a.Email = b.Email
+	}
+	return a
+}
+
+func getMaintainersFromIssues(issues EcosystemsIssues) []EcosystemsMaintainer {
+	maintainers := []EcosystemsMaintainer{}
+	for _, issueRaiser := range issues.Table.Maintainers {
+		newMaintainer := EcosystemsMaintainer{
+			Login: issueRaiser.Table.Login,
+			Name:  nil,
+			Email: nil,
+		}
+		maintainers = append(maintainers, newMaintainer)
+	}
+	return maintainers
+}
+
 // Get all committers for a package, sorted descendingly by commit count. For
 // each committer, mark them a significant commiter, and continue until all
 // significant commiters have together cumulatively committed at least
@@ -294,15 +389,16 @@ func getMaintainerMapFromPackages(packages []EcosystemsPackage) map[EcosystemsMa
 	return maintainerMap
 }
 
-func mergeMaintainers(a []EcosystemsMaintainer, b []EcosystemsMaintainer) []EcosystemsMaintainer {
+func mergeMaintainerLists(a []EcosystemsMaintainer, b []EcosystemsMaintainer) []EcosystemsMaintainer {
 	for _, mb := range b {
 		exists := false
-		for _, ma := range a {
+		for idx, ma := range a {
 			isSimilar := (ma.Login != nil && mb.Login != nil && *ma.Login == *mb.Login) ||
 				(ma.Name != nil && mb.Name != nil && *ma.Name == *mb.Name) ||
 				(ma.Email != nil && mb.Email != nil && *ma.Email == *mb.Email)
 			if isSimilar {
 				exists = true
+				a[idx] = mergeMaintainers(ma, mb)
 			}
 		}
 		if !exists {
@@ -320,25 +416,26 @@ func main() {
 		if pkg.RepositoryUrl == nil || len(*pkg.RepositoryUrl) == 0 {
 			continue
 		}
+
 		summary := getPackageSummary(*pkg.RepositoryUrl)
-		maintainersFromCommits := getMaintainersFromCommits(summary.Commits)
-		pkg.Maintainers = mergeMaintainers(pkg.Maintainers, maintainersFromCommits)
-		// log.Println("Number of commits:")
-		// spew.Fdump(os.Stderr, summary.Commits.TotalCommits)
-		// log.Println("Committers:")
-		// for idx, committer := range summary.Commits.Committers {
-		// 	if idx > 4 {
-		// 		break
-		// 	}
-		// 	spew.Fdump(os.Stderr, committer)
-		// }
-		// log.Println("Maintainers from commits:")
-		// spew.Fdump(os.Stderr, maintainersFromCommits)
-		// log.Println("All maintainers:")
+
+		// log.Println("##### Initial maintainers #####")
 		// spew.Fdump(os.Stderr, pkg.Maintainers)
+
+		maintainersFromCommits := getMaintainersFromCommits(summary.Commits)
+		maintainersFromIssues := getMaintainersFromIssues(summary.Issues)
+		pkg.Maintainers = mergeMaintainerLists(pkg.Maintainers, maintainersFromCommits)
+		pkg.Maintainers = mergeMaintainerLists(pkg.Maintainers, maintainersFromIssues)
+
+		// log.Println("##### Maintainers from commits #####")
+		// spew.Fdump(os.Stderr, maintainersFromCommits)
+		// log.Println("##### Maintainers from issues #####")
+		// spew.Fdump(os.Stderr, maintainersFromIssues)
+		// log.Println("##### Final maintainers #####")
+		// spew.Fdump(os.Stderr, pkg.Maintainers)
+		// log.Printf("\n\n\n")
 	}
 	maintainerMap := getMaintainerMapFromPackages(packages)
-	// spew.Fdump(os.Stderr, maintainerMap)
 	log.Println(len(packages))
 	for k := range maintainerMap {
 		log.Printf("%03d\t%s; %s; %s\n",
