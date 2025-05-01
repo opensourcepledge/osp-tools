@@ -15,7 +15,14 @@ Here's how this broadly works:
 2. We find critical packages for each ecosystem — the packages that, when their downloads are summed up, they together
    make up 80% of the downloads for that ecosystem. See the [origin of this calculation][calc-origin] and the
    [calculation source code][calc-code].
-3. We find the maintainers that maintain those packages.
+3. We find the maintainers that maintain those packages. Sometimes ecosystems can tell us who maintains a package. But
+   sometimes it's more complicated.
+4. We try to find each package's repository, and go through its commit statistics. We find the committers with the
+   highest commit count who, when summed up, make up at least 30% of the repo's commits. We call these “significant
+   committers”, and include them in the maintainer list.
+5. We can also use GitHub issues to identify maintainers. GitHub issue comments can bear specific badges, such as
+   “Collaborator” or “Member”, which signify that the user who left that commit has been granted certain permissions on
+   that repository. [We add Members, Owners and Collaborators][member-assoc] to the maintainer list for that package.
 
 This method has multiple limitations:
 
@@ -40,7 +47,7 @@ Useful ecosyste.ms resources:
   https://packages.ecosyste.ms/api/v1/registries/rubygems.org/packages?critical=true&page=1&per_page=1000
 * Get all registries<br>
   https://packages.ecosyste.ms/api/v1/registries/
-* Look up a project's summary by repository URL (particularly, see committers)<br>
+* Look up a project's summary by repository URL (particularly, see committers and issues)<br>
   https://summary.ecosyste.ms/api/v1/projects/lookup?url=https://github.com/pythonadelaide/karmabot
 * Get data about GitHub Sponsors accounts and their sponsors<br>
   https://sponsors.ecosyste.ms/docs/index.html
@@ -50,3 +57,4 @@ Useful ecosyste.ms resources:
 [calc-code]: https://github.com/ecosyste-ms/packages/blob/81886822f53f32b31a61d65505a62e5cb354038c/app/models/registry.rb#L415
 [calc-origin]: https://github.com/chadwhitacre/openpath/issues/20#issuecomment-1929436690
 [ecosyste.ms]: https://ecosyste.ms
+[member-assoc]: https://github.com/ecosyste-ms/issues/blob/9678d9cba89f054f2114969f96d751c371ed0c33/app/models/issue.rb#L22
