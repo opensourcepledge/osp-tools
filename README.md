@@ -11,3 +11,7 @@ This repository contains tools used, or previously used, internally to manage th
 * [gh-sponsor-finder](gh-sponsor-finder/): Gets information on the network of
   GitHub sponsors starting with an organization.
 * [reportviz](reportviz/): Visualises Open Source Pledge members' reporting periods.
+
+Previously in this repo:
+
+* find-critical-maintainers: Moved to [opensourcepledge/findcrit](https://github.com/opensourcepledge/findcrit)!
