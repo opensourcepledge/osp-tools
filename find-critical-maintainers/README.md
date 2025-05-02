@@ -45,8 +45,6 @@ This method has multiple limitations:
 
 ## TODOs
 
-* Implement local cache for ecosyste.ms endpoints. This would allow us to rerun revisions of the code without hitting
-  the network every time. The cache could be cleared whenever fresh data is desired.
 * Move this tool into its own repository. Maybe with a spiffier name?
 * Write a case study blog post for [the ecosyste.ms blog][eco-blog].
 * Write a case study for [the ecosyste.ms docs website][eco-docs].

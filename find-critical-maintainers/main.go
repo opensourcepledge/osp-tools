@@ -5,13 +5,16 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
-	// "github.com/davecgh/go-spew/spew"
+	"io"
 	"log"
 	"net/http"
-	// "os"
+	"os"
 	"time"
+	// "github.com/davecgh/go-spew/spew"
 )
 
 type EcosystemsMaintainer struct {
@@ -233,14 +236,53 @@ func getUrlForPackageSummary(url string) string {
 	return fmt.Sprintf("https://summary.ecosyste.ms/api/v1/projects/lookup?url=%s", url)
 }
 
+func getCachePathForSlug(slug string) string {
+	cacheParentDir, err := os.UserCacheDir()
+	if err != nil {
+		cacheParentDir = os.TempDir()
+	}
+	filenamePrefix := ""
+	cacheDir := fmt.Sprintf("%s/findcrit", cacheParentDir)
+	err = os.MkdirAll(cacheDir, 0755)
+	if err != nil {
+		cacheDir = cacheParentDir
+		filenamePrefix = "findcrit-"
+	}
+	return fmt.Sprintf("%s/%s%s", cacheDir, filenamePrefix, slug)
+}
+
 func getJson(url string, target interface{}) error {
 	log.Printf("GET %s\n", url)
-	r, err := httpClient.Get(url)
-	if err != nil {
+
+	hasher := sha256.New()
+	hasher.Write([]byte(url))
+	hash := hasher.Sum(nil)
+
+	cachePath := getCachePathForSlug(fmt.Sprintf("%x", hash))
+	body, err := os.ReadFile(cachePath)
+
+	if err != nil && errors.Is(err, os.ErrNotExist) {
+		r, err := httpClient.Get(url)
+		if err != nil {
+			return err
+		}
+		defer r.Body.Close()
+
+		body, err = io.ReadAll(r.Body)
+		if err != nil {
+			return err
+		}
+
+		log.Printf("Caching to %s\n", cachePath)
+		err = os.WriteFile(cachePath, body, 0644)
+		if err != nil {
+			return err
+		}
+	} else if err != nil {
 		return err
 	}
-	defer r.Body.Close()
-	return json.NewDecoder(r.Body).Decode(target)
+
+	return json.Unmarshal(body, target)
 }
 
 func getCriticalPackages() []EcosystemsPackage {
